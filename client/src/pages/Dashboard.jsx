@@ -1,35 +1,37 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import CreateProjectModal from '../components/CreateProjectModal';
+import CreateTeamModal from '../components/CreateTeamModal'; // <--- 1. Import Team Modal
 import api from '../utils/api';
-import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false); // <--- 2. New State
   const [teams, setTeams] = useState([]);
   const [activeTeam, setActiveTeam] = useState(null);
   const [projects, setProjects] = useState([]);
   
-  // Initialize the navigation hook
   const navigate = useNavigate();
 
-  // 1. Fetch User's Teams on Load
-  useEffect(() => {
-    const fetchTeams = async () => {
-      try {
-        const { data } = await api.get('/teams');
-        setTeams(data);
-        if (data.length > 0) {
-          setActiveTeam(data[0]); // Select the first team automatically
-        }
-      } catch (error) {
-        console.error("Error fetching teams:", error);
+  // Defined outside useEffect so we can call it again after creating a team
+  const fetchTeams = async () => {
+    try {
+      const { data } = await api.get('/teams');
+      setTeams(data);
+      if (data.length > 0) {
+        // If we just created a team and didn't have one before, select it
+        if (!activeTeam) setActiveTeam(data[0]);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching teams:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchTeams();
   }, []);
 
-  // 2. Fetch Projects whenever the Active Team changes
   const fetchProjects = async () => {
     if (!activeTeam) return;
     try {
@@ -66,13 +68,12 @@ const Dashboard = () => {
           </div>
 
           <div className="mt-8">
-            {/* Show Projects Grid */}
             {projects.length > 0 ? (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {projects.map((project) => (
                   <div 
                     key={project._id} 
-                    onClick={() => navigate(`/project/${project._id}`)} // <--- CLICK HANDLER ADDED
+                    onClick={() => navigate(`/project/${project._id}`)}
                     className="overflow-hidden bg-white shadow rounded-lg hover:shadow-md transition-shadow cursor-pointer"
                   >
                     <div className="p-5">
@@ -90,6 +91,7 @@ const Dashboard = () => {
                 ))}
               </div>
             ) : (
+              // Empty State Area
               <div className="overflow-hidden bg-white shadow rounded-lg">
                 <div className="p-6 text-center py-10">
                   <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -98,6 +100,19 @@ const Dashboard = () => {
                   <p className="mt-1 text-sm text-gray-500">
                     {activeTeam ? 'Create a project to get started.' : 'You need to be part of a team to see projects.'}
                   </p>
+                  
+                  {/* 3. Button for New Users to Create a Team */}
+                  {!activeTeam && (
+                    <div className="mt-6">
+                      <button
+                        onClick={() => setIsTeamModalOpen(true)}
+                        className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+                      >
+                        Create Your First Team
+                      </button>
+                    </div>
+                  )}
+
                 </div>
               </div>
             )}
@@ -105,6 +120,7 @@ const Dashboard = () => {
         </div>
       </main>
 
+      {/* Project Modal */}
       {activeTeam && (
         <CreateProjectModal 
           isOpen={isModalOpen} 
@@ -116,6 +132,15 @@ const Dashboard = () => {
           }}
         />
       )}
+
+      {/* 4. Team Modal */}
+      <CreateTeamModal
+        isOpen={isTeamModalOpen}
+        onClose={() => setIsTeamModalOpen(false)}
+        onTeamCreated={() => {
+            fetchTeams(); // Reload teams so the new one appears immediately
+        }}
+      />
     </div>
   );
 };

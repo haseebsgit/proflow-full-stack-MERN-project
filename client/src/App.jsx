@@ -1,29 +1,50 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import ProjectDetails from './pages/ProjectDetails'; // <--- 1. IMPORT THIS
+import ProjectDetails from './pages/ProjectDetails';
+
+// Helper Component: Checks for token every time a route is accessed
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  
+  if (!token) {
+    // If no token, kick them back to login
+    return <Navigate to="/login" />;
+  }
+  
+  // If token exists, let them see the page
+  return children;
+};
 
 function App() {
-  const isAuthenticated = !!localStorage.getItem('token');
-
   return (
     <Router>
       <Routes>
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         
+        {/* Protected Routes (Wrapped in ProtectedRoute) */}
         <Route 
           path="/" 
-          element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
         />
 
-        {/* 2. ADD THIS ROUTE */}
-        {/* This tells React: "If the URL matches /project/ID, show the Details page" */}
         <Route 
           path="/project/:id" 
-          element={isAuthenticated ? <ProjectDetails /> : <Navigate to="/login" />} 
+          element={
+            <ProtectedRoute>
+              <ProjectDetails />
+            </ProtectedRoute>
+          } 
         />
         
-        {/* This is the catch-all that was sending you to login before */}
+        {/* Catch-all */}
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </Router>
